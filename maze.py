@@ -1,11 +1,14 @@
 import random
 import matplotlib.pyplot as plt
 from matplotlib import colors
+from a_star import a_star_search
 from bfs import bfs
 from dfs import dfs
 from dls import dls
 from graph import Graph, Node
 import networkx as nx
+
+from greedy_bfs import greedy_bfs
 
 
 class Cell:
@@ -195,29 +198,49 @@ class Maze:
         plt.savefig("maze_graph.png")
         plt.close()
 
-    def solve(self, method="bfs"):
-        if method == "bfs":
-            path, n = bfs(self.graph, self.graph.start, self.graph.end)
-            for node in path:
-                self.graph.nodes[node].solution = True
-
+    def solve(self):
+        def print_solution(algorithm, path, n):
             if len(path) > 0:
-                print(f"BFS Solution found: {path} in {n} steps")
+                print(f"---{algorithm}---")
+                print(f"Solution found: {path} in {n} steps\n")
+                # print("solution found")
                 self.solution = path
             else:
                 print("No solution found.")
-        if method == "dfs":
-            path, n = dfs(self.graph, self.graph.start, self.graph.end)
-            if len(path) > 0:
-                print(f"DFS Solution found: {path} in {n} steps")
-            else:
-                print("No solution found.")
-        if method == "dls":
-            path, n = dls(self.graph, self.graph.start, self.graph.end, 100)
-            if len(path) > 0:
-                print(f"DLS Solution found: {path} in {n} steps")
-            else:
-                print("No solution found.")
+
+        path, n = bfs(self.graph, self.graph.start, self.graph.end)
+
+        # this is only for the final visualization, i draw the solution on the matrix
+        for node in path:
+            self.graph.nodes[node].solution = True
+
+        print_solution("BFS", path, n)
+
+        path, n = dfs(self.graph, self.graph.start, self.graph.end)
+
+        print_solution("DFS", path, n)
+
+        path, n = dls(self.graph, self.graph.start, self.graph.end, 100)
+
+        print_solution("DLS", path, n)
+
+        path, n = greedy_bfs(self.graph, self.graph.start, self.graph.end)
+
+        print_solution("Greedy BFS Euclidean Heuristic", path, n)
+
+        path, n = greedy_bfs(self.graph, self.graph.start, self.graph.end, "manhattan")
+
+        print_solution("Greedy BFS Manhattan Heuristic", path, n)
+
+        path, n = a_star_search(self.graph, self.graph.start, self.graph.end)
+
+        print_solution("A* Euclidean Heuristic", path, n)
+
+        path, n = a_star_search(
+            self.graph, self.graph.start, self.graph.end, "manhattan"
+        )
+
+        print_solution("A* Manhattan Heuristic", path, n)
 
     def draw_solution(self):
         if not self.solution:
@@ -231,7 +254,6 @@ class Maze:
         for coord in self.solution:
             self.matrix[coord[1]][coord[0]] = 4
 
-        # literally copy-pasting the visualize method lol, just another value for the cmap
         plt.figure(figsize=(10, 5))
         cmap = colors.ListedColormap(["white", "black", "red", "green", "blue"])
 

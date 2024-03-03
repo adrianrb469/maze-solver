@@ -1,6 +1,6 @@
 class Node:
     def __init__(self, value) -> None:
-        self.value = value  # (x, y) to uniquely identify the node
+        self.value = value  # (x, y) to uniquely identify the node, also useful for heuristics (euclidean distance)
         self.adjacent = {}  # key: node, value: weight
         self.visited = False
         self.solution = False

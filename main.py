@@ -3,9 +3,10 @@ from maze import Maze
 
 def main():
     maze = Maze(4, 4)
-    maze.generate()
     maze.visualize()
-    maze.save("csv")
+    maze.save("txt")
+    maze.solve("bfs")
+    maze.solve("dfs")
 
 
 if __name__ == "__main__":

@@ -2,11 +2,14 @@ from maze import Maze
 
 
 def main():
-    maze = Maze(4, 4)
+    maze = Maze(6, 6)
     maze.visualize()
-    maze.save("txt")
+    maze.render_graph()
+    # maze.save("txt")
     maze.solve("bfs")
     maze.solve("dfs")
+    maze.solve("dls")
+    maze.draw_solution()
 
 
 if __name__ == "__main__":

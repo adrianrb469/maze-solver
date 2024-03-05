@@ -1,4 +1,5 @@
 import random
+import time
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from a_star import a_star_search
@@ -31,16 +32,20 @@ class Cell:
 
 
 class Maze:
-    def __init__(self, width: int, height: int) -> None:
+    def __init__(self, width: int = 0, height: int = 0, filename: str = None) -> None:
         self.width = width
         self.height = height
         self.maze = [[Cell(x, y) for y in range(height)] for x in range(width)]
         self.matrix = [[]]
         self.graph = None
         self.solution = []
-        # generate maze -> conver to matrix -> construct graph out of the paths
-        self.generate()
-        self.matrix_form()
+
+        if filename:
+            self.load_from_txt(filename)  # loads the matrix directly from a txt file
+        else:
+            self.generate()
+            self.matrix_form()
+
         self.construct_graph()
 
     # Uses randomized depth-first search to generate a maze (iterative implementation)
@@ -87,18 +92,18 @@ class Maze:
 
     def matrix_form(self):
         self.matrix = [
-            [1 for _ in range(2 * self.width + 1)] for _ in range(2 * self.height + 1)
+            [0 for _ in range(2 * self.width + 1)] for _ in range(2 * self.height + 1)
         ]
 
         for x in range(self.width):
             for y in range(self.height):
-                self.matrix[2 * y + 1][2 * x + 1] = 0
+                self.matrix[2 * y + 1][2 * x + 1] = 1
 
                 if not self.maze[x][y].walls[1]:
-                    self.matrix[2 * y + 1][2 * x + 2] = 0
+                    self.matrix[2 * y + 1][2 * x + 2] = 1
 
                 if not self.maze[x][y].walls[3]:
-                    self.matrix[2 * y + 2][2 * x + 1] = 0
+                    self.matrix[2 * y + 2][2 * x + 1] = 1
 
         # pick entrance and exit randomly
         is_wall = True
@@ -107,12 +112,21 @@ class Maze:
             start_x, start_y = random.choice(range(self.width)), 0
             end_x, end_y = random.choice(range(self.width)), self.height - 1
             if (
-                self.matrix[2 * start_y + 1][2 * start_x + 1] == 0
-                and self.matrix[2 * end_y + 1][2 * end_x + 1] == 0
+                self.matrix[2 * start_y + 1][2 * start_x + 1] == 1
+                and self.matrix[2 * end_y + 1][2 * end_x + 1] == 1
             ):
                 is_wall = False
                 self.matrix[2 * start_y + 1][2 * start_x + 1] = 2
                 self.matrix[2 * end_y + 1][2 * end_x + 1] = 3
+
+    def load_from_txt(self, filename):
+        with open(filename, "r") as f:
+            self.matrix = [
+                [int(cell) for cell in line.strip()] for line in f.readlines()
+            ]
+        self.width = len(self.matrix[0]) // 2
+        self.height = len(self.matrix) // 2
+        self.construct_graph()
 
     def visualize(self):
         plt.figure(figsize=(10, 5))
@@ -149,7 +163,7 @@ class Maze:
 
         for x in range(width):
             for y in range(height):
-                if self.matrix[y][x] != 1:  # we only care about path cells
+                if self.matrix[y][x] != 0:  # we only care about path cells
                     node = Node((x, y))
                     graph.add_node(node)
 
@@ -163,14 +177,14 @@ class Maze:
 
         for x in range(width):
             for y in range(height):
-                if self.matrix[y][x] != 1:
-                    if y > 0 and self.matrix[y - 1][x] != 1:
+                if self.matrix[y][x] != 0:
+                    if y > 0 and self.matrix[y - 1][x] != 0:
                         graph.nodes[(x, y)].add_edge(graph.nodes[(x, y - 1)])
-                    if y < height - 1 and self.matrix[y + 1][x] != 1:
+                    if y < height - 1 and self.matrix[y + 1][x] != 0:
                         graph.nodes[(x, y)].add_edge(graph.nodes[(x, y + 1)])
-                    if x > 0 and self.matrix[y][x - 1] != 1:
+                    if x > 0 and self.matrix[y][x - 1] != 0:
                         graph.nodes[(x, y)].add_edge(graph.nodes[(x - 1, y)])
-                    if x < width - 1 and self.matrix[y][x + 1] != 1:
+                    if x < width - 1 and self.matrix[y][x + 1] != 0:
                         graph.nodes[(x, y)].add_edge(graph.nodes[(x + 1, y)])
 
         self.graph = graph
@@ -187,62 +201,62 @@ class Maze:
             elif node.start:
                 nx.set_node_attributes(G, {node.value: "red"}, "color")
             else:
-                nx.set_node_attributes(G, {node.value: "lightblue"}, "color")
+                nx.set_node_attributes(G, {node.value: "black"}, "color")
 
         for node in self.graph.nodes.values():
             for neighbour in node.adjacent:
                 G.add_edge(node.value, neighbour.value)
-        plt.figure(figsize=(10, 5))
+
+        plt.figure(figsize=(20, 20))
         colors = nx.get_node_attributes(G, "color").values()
-        nx.draw(G, pos=pos, with_labels=True, node_color=colors, node_size=600)
+        nx.draw(G, pos=pos, node_color=colors, node_size=100)
         plt.savefig("maze_graph.png")
         plt.close()
 
     def solve(self):
-        def print_solution(algorithm, path, n):
+        solutions = []
+
+        def print_solution(algorithm, path, n, execution_time):
             if len(path) > 0:
                 print(f"---{algorithm}---")
-                print(f"Solution found: {path} in {n} steps\n")
-                # print("solution found")
+                print(f"Solution found: in {len(path)} steps")
+                print(f"Execution time: {execution_time} seconds")
                 self.solution = path
+                solutions.append((algorithm, len(path), execution_time))
             else:
                 print("No solution found.")
 
-        path, n = bfs(self.graph, self.graph.start, self.graph.end)
+        algorithms = [
+            ("BFS", bfs),
+            ("DFS", dfs),
+            ("DLS", dls, 800),
+            ("Greedy BFS Euclidean Heuristic", greedy_bfs),
+            (
+                "Greedy BFS Manhattan Heuristic",
+                lambda graph, start, end: greedy_bfs(graph, start, end, "manhattan"),
+            ),
+            ("A* Euclidean Heuristic", a_star_search),
+            (
+                "A* Manhattan Heuristic",
+                lambda graph, start, end: a_star_search(graph, start, end, "manhattan"),
+            ),
+        ]
 
-        # this is only for the final visualization, i draw the solution on the matrix
-        for node in path:
-            self.graph.nodes[node].solution = True
+        for algorithm_name, algorithm, *args in algorithms:
+            start_time = time.time()
+            path, n = algorithm(self.graph, self.graph.start, self.graph.end, *args)
+            end_time = time.time()
 
-        print_solution("BFS", path, n)
+            for node in path:
+                self.graph.nodes[node].solution = True
 
-        path, n = dfs(self.graph, self.graph.start, self.graph.end)
+            self.solution = path
+            solutions.append((algorithm_name, len(path), end_time - start_time))
+            # print_solution(algorithm_name, path, n, end_time - start_time)
 
-        print_solution("DFS", path, n)
+        return solutions
 
-        path, n = dls(self.graph, self.graph.start, self.graph.end, 100)
-
-        print_solution("DLS", path, n)
-
-        path, n = greedy_bfs(self.graph, self.graph.start, self.graph.end)
-
-        print_solution("Greedy BFS Euclidean Heuristic", path, n)
-
-        path, n = greedy_bfs(self.graph, self.graph.start, self.graph.end, "manhattan")
-
-        print_solution("Greedy BFS Manhattan Heuristic", path, n)
-
-        path, n = a_star_search(self.graph, self.graph.start, self.graph.end)
-
-        print_solution("A* Euclidean Heuristic", path, n)
-
-        path, n = a_star_search(
-            self.graph, self.graph.start, self.graph.end, "manhattan"
-        )
-
-        print_solution("A* Manhattan Heuristic", path, n)
-
-    def draw_solution(self):
+    def draw_solution(self, filename):
         if not self.solution:
             print("Bro, you need to solve the maze first.")
             return
@@ -255,7 +269,7 @@ class Maze:
             self.matrix[coord[1]][coord[0]] = 4
 
         plt.figure(figsize=(10, 5))
-        cmap = colors.ListedColormap(["white", "black", "red", "green", "blue"])
+        cmap = colors.ListedColormap(["black", "white", "red", "green", "blue"])
 
         plt.imshow(self.matrix, cmap=cmap)
 
@@ -263,4 +277,4 @@ class Maze:
         plt.axis("off")
 
         # Save the plot as a PNG file
-        plt.savefig("maze_solution.png")
+        plt.savefig(filename + ".png")
